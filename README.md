@@ -129,4 +129,41 @@ When `build-scan-push` goes green, your image is live on Docker Hub at
         └── db.js                # complete — do not edit
 ```
 
+## Peer Review — Pull and Run a Classmate's Image
+
+Use these commands to pull a classmate's published image from Docker Hub and verify it works end-to-end.
+
+```bash
+# 1. Pull your classmate's image from Docker Hub
+docker pull <their-dockerhub-username>/workshop-app:latest
+
+# 2. Create an isolated network and start a temporary Postgres container
+docker network create peer-test
+
+docker run -d \
+  --name peer-db \
+  --network peer-test \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=workshop \
+  postgres:16-alpine
+
+# 3. Run their app connected to the database
+docker run -d \
+  --name peer-app \
+  --network peer-test \
+  -p 3000:3000 \
+  -e DATABASE_URL=postgres://postgres:postgres@peer-db:5432/workshop \
+  <their-dockerhub-username>/workshop-app:latest
+
+# 4. Wait ~10 seconds for Postgres to initialize, then verify
+curl -fsS http://localhost:3000/health   # expected: {"status":"ok"}
+curl -fsS http://localhost:3000/tasks    # expected: JSON array with seed task
+
+# 5. Clean up when done
+docker rm -f peer-app peer-db
+docker network rm peer-test
+```
+
+
 Good luck! 
